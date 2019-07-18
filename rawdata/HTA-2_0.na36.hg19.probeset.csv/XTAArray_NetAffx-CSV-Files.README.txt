@@ -1,0 +1,875 @@
+README for Affymetrix XTA (Transcriptome Style Array) CSV annotation files.
+
+Version Feb-10-2014
+Copyright 2014, Affymetrix Inc.
+All Rights Reserved
+
+The contents of this CSV file are covered by the terms of use 
+or license located at http://www.affymetrix.com/browse/terms.jsp 
+
+This README provides a guide to the contents of the CSV
+(comma-separated value) files containing annotations for 
+Affymetrix WT Gene Array probe sets and transcript clusters.
+
+The CSV files contain both design-time information as well as NetAffx
+assignments between probe sets and public mRNA sequences (cDNAs) and
+other annotations associated with these sequences. These files are
+suitable for use with MS Excel and as input to the Affymetrix Expression
+Console software package.
+
+Online resources:
+
+  * NetAffx release notes listing data sources used for array annotation:
+      http://www.affymetrix.com/support/help/releasedocs/index.affx
+
+  * NetAffx interactive array analysis site: 
+      http://www.affymetrix.com/analysis/index.affx
+
+  * NetAffx support materials:
+      http://www.affymetrix.com/support/technical/byproduct.affx?product=netaffx
+
+  * XTA support materials:
+      TBD
+
+
+Contents
+--------
+I. General Notes
+   A. Informative header
+   B. File format conventions
+   C. Array Design Annotation Lifting Pipeline
+   D. mRNA Assignment Pipeline
+      1. Ranking of mRNA Assignments
+      2. Assignment Scoring
+      3. Recovery of Unaligned mRNAs
+      4. Cross-hybridization Assessment
+
+II. Probe Set CSV file
+   A. Content Description
+   B. Column Descriptions
+
+III. Transcript CSV file
+   A. Content Description
+   B. Column Descriptions
+
+
+I. General Notes
+-----------------
+
+I.A. Informative header
+
+   The CSV file contains an informative header consisting of a set of
+   key=value attributes describing the data within the file. This
+   includes details about the array design and the NetAffx release on
+   which the data in the file are based. The keys do not contain
+   spaces, but the values may.
+
+   For compatibility with Affymetrix Expression Console software (EC), 
+   each attribute-containing line of the informative header starts with 
+   '#%' while descriptive comment lines of the header start with '##'.
+
+   The first non-commented row of the CSV file is a column header,
+   containing the primary column titles.
+
+   Description of header keys:
+
+   General information:
+      create_date     - date the CSV file was created
+      chip_type       - offical designation of the chip (a.k.a. array_type)
+      lib_set_name    - array name portion of library file name
+      lib_set_version - array version portion of library file name
+
+   Genome information: 
+      genome-species                - genus and species of organism
+      genome-version                - version used during array annotation
+      genome-version-ucsc           - UCSC version tag for genome assembly
+      genome-version-ncbi           - NCBI version tag for genome assembly
+      genome-version-create_date    - genome assembly release date
+
+   NetAffx information:
+      netaffx-annotation-date                    - NetAffx release date
+      netaffx-annotation-netaffx-build           - NetAffx release number
+      netaffx-annotation-tabular-format-version  - version of the file format
+      netaffx-annotation-docgen-*                - software that created CSV file
+      netaffx-annotation-url-*                   - URL stems to access NetAffx details
+                                                   pages by identifier (ps/ec/tc/rna)
+
+I.B. File format conventions
+
+   The CSV files follow the conventions of other NetAffx tabular data
+   files as described at:
+   
+   http://www.affymetrix.com/support/technical/manual/taf_manual.affx
+   
+   CSV files for XTA arrays are differ from traditional 
+   3'-IVT and WT Affymetrix expression arrays described at
+   the above URL, owing to additional design-time information, the use
+   of junction (JUC) probe sets as well as the more precise relationship
+   to alt transcripts for a given probe set or transcript cluster.
+   
+   Any column within the gene array CSV file may contain single-valued 
+   or multi-valued data.  Furthermore, a given mRNA may contain multiple 
+   annotations of a given type (e.g., alternative gene names, multiple appropriate
+   Gene Ontology IDs, Pfam domains, etc.). Finally, each annotation may 
+   contain more than one type of data (e.g., each associated gene contains a
+   gene symbol, cytogenetic location, description, Entrez Gene ID). 
+ 
+   This set of hierarchical, many-to-one relationships
+   is encoded in the CSV files using the following conventions. 
+   Within each column value, two types of field delimiters may appear:
+   
+      * " /// " - separates annotations for different mRNAs and also
+                  separates multiple annotations of a particular type
+                  for a given mRNA. The mRNA to which the annotation
+                  applies is identified by the first data type
+                  sub-field of the annotation.
+
+      * " // "  - separates different data type sub-fields for a
+                  single mRNA annotation
+   
+   Note that the spaces surrounding the forward slashes are
+   considered part of the delimiter.
+    
+   An empty value (null) is indicated by three hyphens "---".
+      
+   Here's an example to illustrate:
+
+   The probe set ID 3917874 has been assigned to several public
+   mRNAs. Two of these are described in the mrna_assignment column of
+   the probe set CSV file as follows:
+
+               Probe set mrna_assignment column value
+   _______________________________|_____________________________
+   |                                                           |
+  "NM_000454 // chr21 // 100 /// ENST00000270142 // chr21 // 100"
+   |_______|    |___|    |_|     |_____________|    |___|    |_|
+       |          |       |             |             |       |
+   accession    chrm    score       accession        chrm   score
+   |_________________________|   |______________________________|
+                |                               |
+        assigned mRNA #1                 assigned mRNA #2
+   
+   In both the probe set and transcript cluster CSV files, the
+   mrna_assignment column lists all assigned public mRNAs, with their
+   accessions as the first data type sub-field. Other columns
+   containing assigned mRNA annotations will contain data for only
+   those mRNAs for which that data are available. The first data type
+   sub-field of these other columns will contain the accession of the
+   assigned mRNA to which the data for that column apply.
+
+   For example, transcript cluster ID 3917851 (corresponding to the
+   probe set in the example above) has eight assigned mRNAs, but only
+   one of them is associated with a known gene. So the mrna_assignment
+   column for this entry will have data for eight different mRNAs,
+   delimited by seven " /// ", and the gene_assignment column will
+   have just one mRNA sub-field. The first data type sub-field of the
+   mRNA in the gene_assignment column contains the accession of the
+   mRNA, listed in the mrna_assignment column, to which the gene
+   assignment data applies.
+   
+I.C.  Array Design Annotation Lifting Pipeline
+
+   Gene array design strategy relies extensively on the complete
+   genome assembly for the target organism, aligning public mRNA
+   sequences to the genome to determine the location of array
+   annotations (transcript clusters, exon clusters, probe sets,
+   etc.).
+
+   To make the best assignments between the array sequences and known
+   mRNAs, the NetAffx mRNA assignment pipeline (see below) uses the
+   most current version of the genome assembly at the time of
+   preparation for a NetAffx update. This annotation-time genome
+   assembly version is typically different from the genome assembly
+   version used during array design, and chromosomal coordinates will
+   change between genome assembly versions as the draftier portions of
+   the genome are updated. 
+
+   This genome assembly version skew requires the genomic location of
+   gene array annotations to be lifted (i.e., transferred) from their
+   position on the design-time version of the genome assembly to the
+   equivalent position in the annotation-time version of the genome
+   used for a NetAffx update. Occasionally in this lifting process,
+   some array annotations cannot be transferred cleanly to the new
+   genome assembly. More such lifting failures will occur as the
+   annotation-time version of the genome improves and diverges from
+   the design-time version, but typically such failures are rare,
+   ranging from 0.5% (for hg16-to-hg18) up to 4% (for mm5-to-mm8) of
+   design-time probe sets not being lifted.
+
+   Genome assembly versions for array design time and NetAffx
+   annotation time are indicated at the top of this readme file as
+   well as in the header portion of the CSV files (section I.A).
+
+   Lifting of gene array annotation genome coordinates was performed
+   using the command-line version of Jim Kent's LiftOver tool
+   (http://genome.ucsc.edu/cgi-bin/hgLiftOver) with default parameters
+   and processing GFF-formatted gene array design data files. The
+   liftOver output was post-processed to filter out probe set regions
+   (PSRs), and all constituent probe sets and probes, that were not
+   cleanly lifted.
+
+   The genomic location data reported in the CSV files is for the
+   NetAffx annotation-time version of the genome assembly.  These
+   reported genomic location may be different from the location in the
+   genome assembly version used at the time of array design for the
+   reasons described above. The design-time genome locations of gene
+   array annotations can be obtained from viewing the "Design
+   Information" section of the NetAffx details web pages.
+
+I.D. mRNA Assignment Pipeline
+  
+   Assignments to public mRNA were generated by the NetAffx annotation
+   sequence analysis pipeline. Public mRNAs used for assignments came
+   from Genbank, RefSeq, and Ensembl and include non-coding RNA
+   transcripts as well (all public transcripts are collectively
+   refered to in this document as 'mRNA' since that constitutes the
+   bulk of these transcripts). To reduce redundancy, Genbank and
+   RefSeq mRNA sequences were clustered together into groups sharing
+   97% identity and 97% alignment overlap. All RefSeq entries or the
+   longest Genbank sequence were selected as representatives from each
+   cluster. Ensembl sequences were not clustered.
+
+   Three types of sequence alignments are performed as part of the
+   NetAffx annotation pipeline: probe-vs-mRNA, mRNA-vs-genome, and
+   mRNA-vs-mRNA (for non-redundant mRNA clustering).  All sequence
+   alignments used Jim Kent's BLAT software v.29
+   (http://www.genomeblat.com) with the following command-line
+   options:
+
+     Alignment Type             BLAT command-line options               
+     --------------     ----------------------------------------
+     probe-vs-mRNA      -minMatch=1                             
+     mRNA-vs-genome     -mask=lower -qMask=upper -t=dna -q=rna  
+     mRNA-vs-mRNA       -tileSize=12 -minMatch=4 -maxGap=0
+
+   Probe-vs-mRNA alignments were filtered to remove alignments with
+   any mismatches, so all 25 bases of each probe were required to
+   align to their target mRNAs. Also, only sense strand mRNA
+   hits are reported. 
+
+   The same non-redundant public mRNA library, constructed as
+   described above, was used to annotate all Affymetrix expression
+   arrays, including WT and 3' IVT arrays. The specific steps
+   involved in scoring mRNA assignments for WT arrays are different
+   from those used for 3' IVT expression arrays. A whitepaper
+   describing the 3' IVT assignment pipeline is available here:
+
+   http://www.affymetrix.com/support/technical/byproduct.affx?product=netaffx
+
+   The majority of probe sets and transcript clusters do not have
+   public mRNA assignments, since many are based on single-EST or gene
+   predictor evidence that are not included in the set of public mRNAs
+   used for NetAffx mRNA assignments.
+
+   Details of the NetAffx WT array mRNA assignment pipeline along
+   with additional statistics will be described in a separate
+   document.
+
+   I.D.1. Ranking of mRNA Assignments
+
+      When a given probe set or transcript cluster is assigned to
+      multiple mRNAs, these assignments ranked using a classification
+      system that takes into account the nature of each mRNA's data
+      source and quality of its annotation. Assigments are further
+      ranked by the strength of the assignment score described below.
+   
+      Details of the public mRNA classification system will be
+      described in a forthcoming document. For a brief example:
+      RefSeq mRNAs that are reviewed or validated are ranked higher
+      than RefSeq provisional mRNAs; GenBank complete CDS records are
+      ranked above those that lack that annotation; Ensembl known-ccds
+      are ranked above known or novels which are above gene
+      predictions. Also, any mRNA with an associated gene name is
+      ranked above those lacking a known gene name.
+   
+      Assignments are initially ranked according to the mRNA
+      classification system. Assignments to mRNAs with equivalent
+      classification are further ranked according to assignment
+      scoring parameters (see below).
+     
+   I.D.2. Assignment Scoring
+
+      The scoring strategy, and the public mRNA assignment
+      pipeline in general, takes advantage of the genome-based nature
+      of the Gene Array design: Every probe, probe set, exon cluster,
+      and transcript cluster has a unique genomic location.
+
+      Each assignment between a public mRNA and a transcript cluster
+      or probe set is assigned a score based on the number of probes
+      that could be aligned directly to the mRNA relative to the
+      amount that could potentially have aligned.  When a given mRNA
+      is aligned to the genome, it may span only a portion of the
+      probe set or transcript cluster. To get the number of probes
+      that could potentially align to the mRNA, we consider only those
+      probes whose genomic locations are within the region of the mRNA
+      as it aligns to the genome. The maximum assignment score is 100,
+      indicating all possible probes align to the mRNA. Assignments to
+      mRNA's that did not have a high-quality alignment to the genome
+      are analyzed using an alternative but analogous approach
+      (see "Recovery of Unaligned mRNAs" below).
+
+      Assignments for transcript clusters are also given a coverage
+      score which is a rough measure of how much of the transcript
+      cluster is covered by the mRNA in a genomic alignment. Coverage
+      is computed by taking the total number of probes that could
+      potentially align to the mRNA based on the mRNA-to-genome
+      alignment, relative to the total number of probes in the
+      transcript cluster. The maximum coverage score is 100,
+      indicating that all probes in the transcript cluster could
+      potentially align to the mRNA.
+      
+      So, to summarize:
+                           # probes directly aligned
+       assignment score =  -------------------------    x 100
+                           # probes potentially aligned
+
+                                
+                           # probes potentially aligned
+         coverage score =  --------------------------   x 100
+                           # probes total in TC
+
+   I.D.3. Recovery of Unaligned mRNAs
+
+      Some fraction of potentially valid mRNAs and non-coding RNAs
+      cannot not be cleanly aligned to the repeat-masked genome that
+      is used in the NetAffx annotation pipeline. A number of these
+      RNAs were included in the array design and thus transcript
+      clusters and probe sets based on them would not be annotatable
+      using a completely genome-based annotation pipeline. The
+      procedure for computing the assignment and coverage scores for
+      assignments to these RNAs is not the same as for the other
+      genome-alignable RNAs, but follows an analogous procedure.
+
+      The difference is in how the number of probes potentially
+      aligning to the non-genome-aligned mRNA is determined
+      (denominator of the assignment score and numerator of the
+      coverage score). Transcript cluster sequences (consisting of
+      spliced exon cluster sequences sans introns) are aligned against
+      all organism-specific mRNAs using BLAST. Probe locations within
+      the transcript cluster sequences are determined and then
+      compared with the location of the mRNA alignment blocks on the
+      transcript cluster sequences.
+
+      Other than this alternative method for determining the number of
+      potentially aligning probes, the recovery pipeline is identical
+      to the genome-based annotation pipeline.
+
+   I.D.4. Cross-hybridization Assessment
+
+      Weak mRNA assignments that are likely due to cross-hybridization
+      are assessed by examining the assignment score of transcript
+      clusters assigned to mRNAs which could be aligned to the
+      genome. If the assignment score is less than 50, the assignment
+      is flagged as a crosshyb. It is indicated as the assignment xhyb
+      subfield of the mrna_assignment column of the CSV files (see
+      sections II.B.11 and III.B.9).
+
+      This crosshyb assessment is first applied at the transcript
+      cluster level and then propagated down to the constituent exon
+      cluster and probe set levels for all exon clusters and probe
+      sets within this transcript cluster that align to the mRNA in
+      question. 
+
+      A different crosshyb analysis is performed during array design time
+      at the level of the probe set, based on sequence alignments
+      between each probe and all other potentially transcribed array
+      content. This is indicated in the crosshyb_type field of the
+      probe set CSV file (section II.B.12 for more information).
+
+      The key difference between these two crosshyb assessments is
+      that the assignment xhyb field is performed at NetAffx
+      annotation time using an updated set of known and predicted
+      mRNAs, while the probe set crosshyb_type setting is determined
+      using all known and predicted transcripts at the time of array
+      design, which likely differ from the set used for the NetAffx
+      annotation update.
+
+      Another important difference is that the assignment xhyb field
+      is mainly an indictor of weak assignment between a transcript
+      cluster and the assigned mRNA, suggesting a potential crosshyb,
+      whereas the probe set crosshyb_type field is a measure of the
+      promiscuity of the probes within a probe set among transcribed
+      sequences.
+
+      The design-time probe set crosshyb_type is probably a more
+      stringent measure of cross-hybridization potential since it
+      involved a larger set of potentially transcribed sequences than
+      were used for the NetAffx annotation update (more gene
+      predictions and single ESTs). The only caveat here is that it is
+      based on data known at array design time and is not updated with
+      new NetAffx annotation releases.
+
+
+II. Probe Set CSV file
+-----------------------
+
+II.A. Content Description
+
+   Each line contains information for a single probe set ID. The
+   information consists of both design-time data, such as the genomic
+   location, and mRNA assignments for any public mRNAs that should be
+   detected by this probe set based on computational sequence
+   alignment analysis.
+
+   Only limited details are provided for each assigned mRNA. For more
+   information about these mRNAs, see the corresponding entry in the
+   transcript cluster CSV file (use the probe set's transcript cluster
+   ID to join).
+
+   Lines are sorted in ascending order by probe set ID, which
+   corresponds closely with genomic location.
+
+II.B. Column Descriptions
+
+   II.B.1. probeset_id  (integer)
+      
+      Unique identifier for the probe set.
+
+   II.B.2. seqname
+   II.B.3. strand  (+|-)
+   II.B.4. start  (integer)
+   II.B.5. stop  (integer)
+
+      Columns 2-5 describe the genomic location of the transcript
+      cluster in the version of the genome assembly used at annotation
+      time. Coordinates are standard 1-based (length=stop-start+1). 
+
+   II.B.6. probe_count (integer)
+
+      Total number of probes in this probe set.
+
+   II.B.7. transcript_cluster_id  (integer)
+
+      Unique identifier for the transcript cluster containing this
+      probe set.
+
+   II.B.8. exon_id  (integer)
+
+      Unique identifier for the exon cluster containing this probe
+      set.
+
+   II.B.9. psr_id  (integer)
+
+      Unique identifier for the probe selection region containing this
+      probe set.
+
+   II.B.10. gene_assignment  (multipart)
+
+        Gene name(s) for each assigned mRNA for mRNAs that corresponds
+        to known genes. 
+
+      Sub-fields:
+        a. accession       - public sequence identifier for mRNA
+        b. gene symbol     - gene name if mRNA corresponds to a known gene
+
+   II.B.11. mrna_assignment  (multipart)
+
+      Public mRNAs that should be detected by this probe set based on
+      sequence alignment determined at the time of the current NetAffx
+      annotation update.
+
+      Sub-fields: 
+        a. accession          - public sequence identifier for mRNA
+        b. assignment seqname - name of the genomic sequence to which
+                                the public mRNA assigned to this probe
+                                set aligns. Could potentially be
+                                different from the design-time seqname
+                                (column #2) if probes in this probe
+                                set match an mRNA sequence which
+                                aligns to a highly similar sequence on
+                                different chromosomes. The
+                                assignment seqname will be "na" in
+                                cases where the mRNA could not be
+                                aligned to the genome.
+        c. assignment score   - (direct probes/possible probes) * 100.
+                                A null assignment score occurs for
+                                mRNAs that could not be aligned to the
+                                genome, yet could be aligned to probes.
+        d. direct probes      - number of probes in this probe set
+                                that align directly and completely to
+                                this mRNA.  Used for computing
+                                assignment score.
+        e. possible probes    - number of probes within this
+                                probe set whose genomic location lies
+                                within the mRNA's genomic alignment.
+                                Used for computing assignment
+                                score. Also used for computing the
+                                assignment coverage (see Transcript
+                                CSV annotation section). A null
+                                value occurs for mRNAs that could not
+                                be aligned to the genome.
+        f. assignment xhyb      - boolean indicator for whether this
+                                assignment is considered a
+                                cross-hybridization. Assignment
+                                cross-hyb calling criteria 
+                                are described in section I.D.4.
+
+   II.B.12. crosshyb_type   (integer)
+
+       Cross-hybridization potential of the probe set determined at
+       the time of array design. This field is based on
+       computational sequence alignment against all known and
+       putatively transcribed array design content, which includes all
+       potentially transcribed regions of the genome and other
+       transcribed sequences that could not be mapped to the
+       genome. This field has one of three possible values:
+
+          1 = unique    - All probes in the probe set perfectly match
+                          only one sequence in the putatively
+                          transcribed array design content. The vast
+                          majority (>80%) of probe sets are unique.  
+
+          2 = similar   - All the probes in the probe set perfectly
+                          match more than one sequence in the
+                          putatively transcribed array design content.
+
+          3 = mixed     - The probes in the probe set either perfectly match or
+                          partially match more than one sequence in
+                          the putatively transcribed array design content. 
+
+       ** Note that these definitions for probeset type are relative to
+          exon and gene array designs and may not be true for other
+          types of designs.
+
+          See section I.D.4. for general information about crosshyb
+          assessment. 
+
+   II.B.13. number_independent_probes  (integer)
+
+       Number of probes within probe set that overlaps no more than 13
+       bases with another probe in the set. (Note that two probes
+       that overlap more than 13 bases are counted as one.)
+
+   II.B.14. number_cross_hyb_probes  (integer)
+
+       Number of probe within probe set that align to more than one
+       genomic location.
+
+   II.B.15. number_nonoverlapping_probes  (integer)
+
+       Number of probe within probe set that do not overlap another probe.
+       (Note that a set of overlapping probes will be counted as 1.)
+
+   II.B.16. level
+
+       Level of design-time annotation support for the probe set.
+      
+       Possible values:
+         Core     - Supported by RefSeq and full-length GenBank
+                    transcripts with complete CDS information.
+         Extended - Other cDNA support (ESTs, partial mRNAs, syntenic
+                    human and mouse mRNAs), Ensembl support, Vega
+                    or VegaPseudogene support.
+         Full     - Supported by gene predictions only (ie GENSCAN,
+                    GENSCAN Suboptimal, SgpGene, geneid, exoniphy,
+                    RNAgene, TWINSCAN).  
+         Free     - Designed against annotations which were merged
+                    such that no single annotation (or evidence) contains the
+                    probeset. 
+         Ambiguous - Cannot be unambiguously assigned to a particular
+                     transcript cluster. 
+
+
+   II.B.17. bounded   (boolean)
+
+       Probesets are grouped into transcript clusters based on 
+       spliced annotations which share splice sites and single
+       exons which have overlapping exonic sequence. Remaining
+       single exon content may be grouped into a transcript
+       cluster if it is bounded by it (ie falls within an intron).
+       This flag indicates such inclusion by bounding. Bounded
+       probesets have lower confidence of correct transcript cluster
+       placement.
+
+   II.B.18. NoBoundedEvidence  (boolean)
+
+       Indicates probesets which are not fully contained within any single
+       annotation. For example, two EST sequences aligned to the genome
+       may infer the following single exon transcribed region:
+
+          ================================================== Genome
+
+               ----------------   EST 1
+                         -----------------  EST 2
+
+       The result may have been a probe selection region (PSR) and probeset
+       as follows:
+
+               ---------------------------  PSR
+                  --    --  --         --   Probes
+
+       The result is that neither EST fully contains this probeset. Hence
+       no annotations (ie ESTs in this case) are associated with the probeset.
+
+   II.B.19. has_cds  (boolean)
+
+       Indicates whether or not the probe set falls within a coding
+       sequence of a design-time annotation.
+
+   Evidence Columns
+       For Later WT Gene Arrays, these columns will not be present as the design
+       transcript sources have changed.
+
+   II.B.20. fl: putative full-length mRNA from RefSeq and GenBank (integer)
+   II.B.21. mrna: putative partial mRNAs from GenBank (integer)
+   II.B.22. est: expressed sequence tags (integer)
+   II.B.23. vegaGene: public gene set (integer)
+   II.B.24. vegaPseudoGene: public gene set (integer)
+   II.B.25. ensGene: public gene set (integer)
+   II.B.26. sgpGene: public gene set from ab initio gene predictor (integer)
+   II.B.27. exoniphy: public exon set from ab initio exon predictor  (integer)
+   II.B.28. twinscan: public gene set from ab initio gene predictor  (integer)
+   II.B.29. geneid: public gene set from ab initio gene predictor  (integer)
+   II.B.30. genscan: public gene set from ab initio gene predictor  (integer)
+   II.B.31. genscanSubopt: public exon set from ab initio gene predictor  (integer)
+   II.B.32. human_fl: putative full-length mRNAs from RefSeq and GenBank
+                 aligned to the human genome and mapped onto mouse genome
+                 using genome synteny maps (integer)
+   II.B.33. human_mrna: putative partial mRNAs from RefSeq and GenBank
+                 aligned to the human genome and mapped onto mouse genome
+                 using genome synteny maps (integer)
+   II.B.34. rat_fl: putative full-length mRNAs from RefSeq and GenBank
+                 aligned to the rat genome and mapped onto mouse genome
+                 using genome synteny maps (integer)
+   II.B.35. rat_mrna: putative partial mRNAs from RefSeq and GenBank
+                 aligned to the rat genome and mapped onto mouse genome
+                 using genome synteny maps (integer)
+   II.B.36. microRNAregistry: public micro RNA data set (integer)
+   II.B.37. rnaGene: public set of structural RNA genes (integer)
+   II.B.38. mitomap: public set of mitochondrial annotations (integer)
+
+       Columns 20-38 indicates the number of these different categories
+       of design-time annotation used as supporting evidence for the
+       creation of the probe set.
+
+   II.B.39. probeset_type 
+
+       Array design category of the probe set.
+
+              Category                   Description
+       ------------------------    --------------------------------------
+        main                       part of the main design 
+        control->affx              a standard AFFX control 
+        control->chip              a chip control
+        control->bgp->antigenomic  contains antigenomic background probes
+        control->bgp->genomic      contains genomic background probes 
+        normgene->exon             from an exonic region of a
+                                   normalization control gene   
+        normgene->intron           from an intronic region of a
+                                   normalization control gene 
+        rescue                     contains probes tiled across
+                                   an mRNA transcript which either did not
+                                   align to the genome, or aligned poorly  
+
+
+III. Transcript CSV file
+-------------------------
+
+III.A. Content Description
+
+   Each line contains information for a single transcript cluster ID.
+   The information consists of both design-time data, mRNA assignments
+   for any public mRNAs that should be detected by the probes in the
+   transcript cluster based on computational sequence alignment
+   analysis, and functional information about those public mRNAs, if
+   available.
+
+   Lines are sorted in ascending order by transcript cluster ID, which
+   corresponds closely with genomic location.
+
+III.B. Column Descriptions
+
+   III.B.1. transcript_cluster_id  (integer)
+
+      Unique identifier for the transcript cluster.
+
+   III.B.2. probeset_id  (integer)
+
+      Identical to the transcript cluster id. 
+      Required for compatibility with Expression Console software.
+
+   III.B.3. seqname (string beginning with 'chr')
+   III.B.4. strand  (+|-)
+   III.B.5. start  (integer)
+   III.B.6. stop  (integer)
+
+      Columns 3-6 describe the genomic location of the transcript
+      cluster in the version of the genome assembly used at annotation
+      time. Coordinates are standard 1-based (length=stop-start+1). 
+
+   III.B.7. total_probes  (integer)
+
+      Total number of probes contained by this transcript cluster.
+
+   III.B.8. gene_assignment  (multipart)
+
+      Gene information for each assigned mRNA for mRNAs that corresponds
+      to known genes. 
+
+      Sub-fields:
+        a. accession       - public sequence identifier for mRNA
+        b. gene symbol     - gene name if mRNA corresponds to a known gene
+        c. gene title      - description of gene product 
+        d. cytoband        - cytogenetic location of gene
+        e. entrez gene id  - Entrez Gene database identifier
+
+   III.B.9. mrna_assignment  (multipart)
+
+      Description of the public mRNAs that should be detected by the
+      sets within this transcript cluster based on sequence alignment.
+
+      Sub-fields:
+
+        a. accession          - public sequence identifier for mRNA
+        b. source_name        - Name of public repository containing the
+                                mRNA (Genbank, RefSeq, or Ensembl)
+        c. description        - description of mRNA from source repository
+        d. assignment seqname - name of the genomic sequence to which
+                                the public mRNA assigned to this transcript
+                                cluster aligns. Could potentially be
+                                different from the design-time seqname
+                                (column #2) if probes in this
+                                transcript cluster match an mRNA
+                                sequence which aligns to a highly
+                                similar sequence on different
+                                chromosomes. The assignment seqname
+                                will be "na" in cases where the mRNA
+                                could not be aligned to the genome.                                
+        e. assignment score   - (direct probes/possible probes) * 100.
+                                A null assignment score occurs for mRNAs
+                                that could not be aligned to the
+                                genome, yet could be aligned to probes.
+        f. assignment coverage- (possible probes/total probes) * 100.
+                                A zero value can occur for large
+                                transcript clusters where the number
+                                of possible probes is less than 1% of
+                                the total.
+        g. direct probes      - number of probes in this transcript
+                                cluster that align directly and
+                                completely to this mRNA.  Used for
+                                computing assignment score.
+        h. possible probes    - number of probes within this
+                                transcript cluster whose genomic
+                                location lies within the mRNA's
+                                genomic alignment.  Used for computing
+                                assignment score. Also used for
+                                computing the assignment coverage.
+                                A null value occurs for mRNAs
+                                that could not be aligned to the genome.                                
+        i. assignment xhyb      - boolean indicator for whether this
+                                assignment is considered a
+                                cross-hybridization. Assignment
+                                cross-hyb calling criteria 
+                                are described in section I.D.4.
+                                
+   III.B.10. SwissProt (multipart)
+
+      SwissProt information for each assigned mRNA that can be mapped
+      to one or more SwissProt records. Note that the Swiss-Prot
+      accession not may be associated with the actual mRNA accession
+      listed but rather to an mRNA that has been clustered with the
+      given mRNA by the NetAffx annotation pipeline.
+
+      Sub-fields:
+        a. accession           - public sequence identifier for mRNA
+        b. SwissProt accession - Swiss Prot accession number
+
+   III.B.11. UniGene (multipart)
+
+      UniGene information for each assigned mRNA that can be mapped to
+      one or more UniGene records.
+
+      Sub-fields:
+        a. accession       - public sequence identifier for mRNA
+        k. UniGene id      - Unigene identifier for associated
+                             UniGene cluster
+        l. UniGene expr    - UniGene tissue expression information
+
+
+   III.B.12. GO_biological_process  (multipart)
+   III.B.13. GO_cellular_component  (multipart)
+   III.B.14. GO_molecular_function  (multipart)
+
+       Fields 12-14 contain annotations from the three branches of the
+       Gene Ontology for mRNAs that have GO annotations.
+
+      Sub-fields:
+        a. accession       - public sequence identifier for mRNA
+        b. GO id           - GO identifier for the GO term
+        c. GO term         - GO term text
+        d. GO evidence     - GO evidence code description (not code)
+
+   III.B.15. pathway  (multipart)
+
+      GenMAPP pathway information for assigned mRNAs that can been
+      annotated with GenMAPP data.
+
+      Sub-fields:
+        a. accession       - public sequence identifier for mRNA
+        b. source          - name of the data source
+        c. pathway name    - name of the pathway
+
+   III.B.16. protein_domains  (multipart)
+
+      Pfam protein domain information for mRNAs that can be annotated
+      by these data sources.
+
+      Sub-fields:
+        a. mRNA accession           - public sequence identifier for mRNA
+        b. source                   - name of the data source
+        c. domain accession         - Pfam accession
+        d. domain description       - description of the domain
+
+   III.B.17. crosshyb_type   (integer)
+
+       Cross-hybridization potential of the transcript cluster
+       determined at the time of array design. This field is based on
+       computational sequence alignment against all known and
+       putatively transcribed array design content, which includes all
+       potentially transcribed regions of the genome and other
+       transcribed sequences that could not be mapped to the
+       genome. This field has one of three possible values:
+
+          1 = unique   - All probes in the transcript cluster 
+                         perfectly match only one sequence in the
+                         putatively transcribed array design
+                         content. The vast majority (88%) of
+                         transcript cluster are unique.
+
+          2 = similar  - All the probes in the transcript cluster
+                         perfectly match more than one sequence in
+                         the putatively transcribed array design
+                         content.
+
+          3 = mixed    - The probes in the transcript cluster either
+                         perfectly match or partially match more than
+                         one sequence in the putatively transcribed
+                         array design content.
+
+       ** Note that these definitions for probeset type are relative
+          to exon array and gene array designs and may not be true for
+          other types of designs.
+
+          See section I.D.4. for general information about crosshyb
+          assessment. 
+
+   III.B.18. category  (string)
+
+       Array design category of the transcript cluster:
+
+              Category                   Description
+       ------------------------    --------------------------------------
+        main                       part of the main design 
+        control->affx              a standard AFFX control 
+        control->chip              a chip control
+        control->bgp->antigenomic  contains antigenomic background probes
+        control->bgp->genomic      contains genomic background probes 
+        normgene->exon             from an exonic region of a
+                                   normalization control gene   
+        normgene->intron           from an intronic region of a
+                                   normalization control gene 
+        rescue                     contains probes tiled across
+                                   an mRNA transcript which either did not
+                                   align to the genome, or aligned poorly  
+
+

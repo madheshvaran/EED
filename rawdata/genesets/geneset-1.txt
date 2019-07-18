@@ -1,0 +1,13 @@
+GO_INTESTINAL_EPITHELIAL_CELL_DEVELOPMENT
+> The process whose specific outcome is the progression of a columnar/cuboidal epithelial cell of the intestine over time, from its formation to the mature structure.
+C12orf5
+C1GALT1
+CDKN1A
+HIF1A
+HOXA5
+KLF5
+NKX3-2
+PRDM1
+SPDEF
+TYMS
+YIPF6

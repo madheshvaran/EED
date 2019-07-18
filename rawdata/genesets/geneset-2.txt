@@ -1,0 +1,19 @@
+GO_INTESTINAL_EPITHELIAL_CELL_DIFFERENTIATION
+> The process in which a relatively unspecialized cell acquires specialized features of a columnar/cuboidal epithelial cell of the intestine.
+C12orf5
+C1GALT1
+CDKN1A
+CDX2
+GATA4
+GATA5
+GATA6
+HIF1A
+HOXA5
+KLF5
+NKX3-2
+PRDM1
+PTK6
+SAV1
+SPDEF
+TYMS
+YIPF6
