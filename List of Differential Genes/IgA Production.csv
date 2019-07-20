@@ -1,0 +1,3 @@
+"Probe","R_lowLM","P_lowLM","R_highLM","P_highLM","Gene"
+"TC02002378.hg.1",0.319382341785128,"Not-Significant",0.612889383045497,"Significant","CXCR4"
+"TC13000383.hg.1",0.462615870279624,"Not-Significant",0.778602129668579,"Significant","TNFSF13B"
