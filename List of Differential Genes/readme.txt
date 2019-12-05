@@ -1,0 +1,2 @@
+This folder contains the list of genes that are significantly and differentially expressed between healthy controls and EED groups. 
+These genes are from gene sets list that represent plausible pathophysiological processes in EED. 
