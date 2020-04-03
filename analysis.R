@@ -153,12 +153,12 @@ TAlowLM$category <- rep("LM_low")
 TAlowLM$P_value <- p.adjust(TAlowLM$P_value, "fdr", nrow(TAlowLM))
 TAhighLM$P_value <- p.adjust(TAhighLM$P_value, "fdr", nrow(TAhighLM))
 
-TAlowLM[which(TAlowLM$P_value < 0.3), "P_value"] <- rep("Significant")
+TAlowLM[which(TAlowLM$P_value < 0.1), "P_value"] <- rep("Significant")
 TAlowLM[which(TAlowLM$P_value != "Significant"), "P_value"] <- rep("Not-Significant")
 colnames(TAlowLM) <- c("Probe", "R_lowLM", "P_lowLM")
 TAlowLM[4] <- NULL
 
-TAhighLM[which(TAhighLM$P_value < 0.3), "P_value"] <- rep("Significant")
+TAhighLM[which(TAhighLM$P_value < 0.1), "P_value"] <- rep("Significant")
 TAhighLM[which(TAhighLM$P_value != "Significant"), "P_value"] <- rep("Not-Significant")
 colnames(TAhighLM) <- c("Probe", "R_highLM", "P_highLM")
 TAhighLM[4] <- NULL
